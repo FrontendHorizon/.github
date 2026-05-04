@@ -1,0 +1,52 @@
+name: ci-monitor
+
+# Reusable CI failure monitor — opens an issue when a workflow fails on
+# the default branch. Scoped to push events because PR failures are
+# already visible to the author and don't need org-wide issues.
+#
+# This is the auto-issue-on-CI-failure piece. Combined with audit (vuln
+# issues) and uptime (down issues), every alarm-worthy condition shows
+# up as a tracked issue without anyone watching the Actions tab.
+#
+# Call from a repo's workflow:
+#
+#   on:
+#     workflow_run:
+#       workflows: [check, security, lighthouse]
+#       types: [completed]
+#   permissions:
+#     issues: write
+#     contents: read
+#   jobs:
+#     monitor:
+#       uses: FrontendHorizon/.github/.github/workflows/ci-monitor.yml@main
+
+on:
+  workflow_call:
+
+jobs:
+  alert-on-failure:
+    name: open issue on CI failure
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'push' }}
+    steps:
+      - name: Open issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "🚨 ${{ github.event.workflow_run.name }} failed on ${{ github.event.workflow_run.head_branch }}"
+          content: |
+            ## CI failed on the default branch
+
+            - **Workflow:** ${{ github.event.workflow_run.name }}
+            - **Branch:** `${{ github.event.workflow_run.head_branch }}`
+            - **Commit:** `${{ github.event.workflow_run.head_sha }}`
+            - **Triggered by:** @${{ github.event.workflow_run.actor.login }}
+            - **Run URL:** ${{ github.event.workflow_run.html_url }}
+
+            Default-branch CI is broken. Investigate the run, fix forward
+            (don't revert unless you know the change was bad), and close
+            this issue when CI is green again.
+          labels: ci-failure, needs-triage
