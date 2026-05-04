@@ -1,0 +1,77 @@
+name: security
+
+# Reusable security-scan workflow. Three jobs:
+#
+#   • Dependency Review — blocks PRs that introduce known-vuln deps or
+#     deps with bad licenses. Only runs on pull_request.
+#   • CodeQL — static analysis for JS/TS app code, runs on push, PR,
+#     and weekly schedule. Catches common vulns and dangerous patterns.
+#   • Gitleaks — scans the diff for accidentally committed secrets
+#     (API keys, tokens, etc.).
+#
+# Call from a repo's workflow:
+#
+#   jobs:
+#     security:
+#       uses: FrontendHorizon/.github/.github/workflows/security.yml@main
+#       permissions:
+#         contents: read
+#         pull-requests: read
+#         security-events: write
+
+on:
+  workflow_call:
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          language: ${{ matrix.language }}
+          # Use the security-extended pack for more coverage — slower
+          # but catches more real issues.
+          queries: security-extended
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need the full history so gitleaks can scan past commits
+          # for secrets that already landed.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

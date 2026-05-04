@@ -1,0 +1,71 @@
+name: audit
+
+# Reusable nightly dependency audit. Runs `npm audit` and opens a GitHub
+# issue if anything at high or critical severity is reported. Calling
+# repo gets a daily cron unless overridden.
+#
+# Call from a repo's workflow:
+#
+#   on:
+#     schedule:
+#       - cron: '15 8 * * *'
+#     workflow_dispatch:
+#   jobs:
+#     audit:
+#       uses: FrontendHorizon/.github/.github/workflows/audit.yml@main
+#       with:
+#         working-directory: site
+#       permissions:
+#         contents: read
+#         issues: write
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Path to the package"
+        type: string
+        default: "."
+      severity:
+        description: "Minimum severity to report (low|moderate|high|critical)"
+        type: string
+        default: "high"
+
+jobs:
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Run audit
+        id: audit
+        # `--audit-level=high` makes audit exit non-zero only when
+        # high+ vulns exist. Capture the output either way; we'll
+        # use it as the body of the issue.
+        run: |
+          set +e
+          npm audit --audit-level=${{ inputs.severity }} > audit.txt 2>&1
+          status=$?
+          echo "status=$status" >> $GITHUB_OUTPUT
+          cat audit.txt
+          exit 0
+
+      - name: Open issue when audit finds vulnerabilities
+        if: steps.audit.outputs.status != '0'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Nightly audit: ${{ inputs.severity }}+ vulnerabilities found"
+          content-filepath: ${{ inputs.working-directory }}/audit.txt
+          labels: dependencies, security

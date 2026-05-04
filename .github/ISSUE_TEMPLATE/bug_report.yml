@@ -1,0 +1,35 @@
+name: Bug report
+description: Something isn't working
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What broke?
+      description: One sentence — the thing that doesn't work.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How do you trigger it?
+      description: Steps. Be specific. Include URLs, account state, browser if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen instead?
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Where you saw it
+      description: prod / staging / local, browser, device.
+      placeholder: prod, Chrome 130 on macOS
+  - type: textarea
+    id: extra
+    attributes:
+      label: Logs, screenshots, or anything else
+      description: Optional. Network errors, console output, screenshots.

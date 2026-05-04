@@ -1,0 +1,93 @@
+name: check
+
+# Reusable workflow — typecheck + lint + build for any Next.js TypeScript app
+# in the FrontendHorizon org. Call from a repo's own workflow with:
+#
+#   jobs:
+#     check:
+#       uses: FrontendHorizon/.github/.github/workflows/check.yml@main
+#       with:
+#         working-directory: site   # optional, default '.'
+#         node-version: '22'        # optional, default '22'
+#         skip-build: false         # optional, default false
+#
+# Three parallel jobs (TypeScript, ESLint, Build). Build can be skipped for
+# repos that don't keep env vars in CI — typecheck still catches most issues.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Path to the package (root or subdir like 'site')"
+        type: string
+        default: "."
+      node-version:
+        description: "Node.js version to install"
+        type: string
+        default: "22"
+      skip-build:
+        description: "Skip the build job (for repos without CI env vars)"
+        type: boolean
+        default: false
+    secrets:
+      NEXT_PUBLIC_SUPABASE_URL:
+        required: false
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        required: false
+
+jobs:
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      - run: npm ci
+      - run: npx eslint .
+
+  build:
+    name: Build
+    if: ${{ !inputs.skip-build }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    env:
+      # Supabase env vars are required at Next.js build time because
+      # `process.env.NEXT_PUBLIC_SUPABASE_URL!` etc. get inlined into
+      # the client bundle. Tests pass dummies so the build proceeds;
+      # runtime Supabase calls don't fire in CI.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+      - run: npm ci
+      - run: npm run build

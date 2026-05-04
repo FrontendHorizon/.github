@@ -1,0 +1,73 @@
+name: lighthouse
+
+# Reusable Lighthouse audit. Calls treosh/lighthouse-ci-action against
+# any URL with three runs (median scoring).
+#
+# Call from a repo's workflow:
+#
+#   on:
+#     push:
+#       branches: [main]
+#     schedule:
+#       - cron: '0 12 * * *'
+#     workflow_dispatch:
+#   jobs:
+#     lh:
+#       uses: FrontendHorizon/.github/.github/workflows/lighthouse.yml@main
+#       with:
+#         url: https://discovery.frontendhorizon.com/
+#         deploy-wait-seconds: 300   # default 0; set to ~300 for Coolify push triggers
+#         preset: desktop            # default mobile; desktop for heavy-paint pages
+
+on:
+  workflow_call:
+    inputs:
+      url:
+        description: "URL to audit"
+        type: string
+        required: true
+      deploy-wait-seconds:
+        description: "Seconds to sleep before audit (let Coolify deploy)"
+        type: number
+        default: 0
+      preset:
+        description: "Lighthouse preset: 'mobile' (default) or 'desktop'"
+        type: string
+        default: "mobile"
+      runs:
+        description: "Lighthouse runs per URL (median scored)"
+        type: number
+        default: 3
+
+jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for deploy
+        if: inputs.deploy-wait-seconds > 0 && github.event_name == 'push'
+        run: |
+          echo "Sleeping ${{ inputs.deploy-wait-seconds }}s for deploy..."
+          sleep ${{ inputs.deploy-wait-seconds }}
+
+      - name: Write Lighthouse config
+        if: inputs.preset != 'mobile'
+        run: |
+          cat > /tmp/lighthouserc.json <<EOF
+          { "ci": { "collect": { "settings": {
+            "preset": "${{ inputs.preset }}",
+            "maxWaitForLoad": 60000,
+            "skipAudits": ["uses-http2"]
+          } } } }
+          EOF
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: ${{ inputs.url }}
+          runs: ${{ inputs.runs }}
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: ${{ inputs.preset != 'mobile' && '/tmp/lighthouserc.json' || '' }}

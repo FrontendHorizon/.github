@@ -1,0 +1,35 @@
+name: Incident
+description: Something is on fire in prod
+labels: ["incident", "needs-triage"]
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: User impact right now
+      description: Who can't do what. One sentence.
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: When it started
+      placeholder: 2026-05-04 14:30 CT
+    validations:
+      required: true
+  - type: textarea
+    id: signal
+    attributes:
+      label: How we found out
+      description: Slack alert, customer text, uptime check, you noticed something. Be specific.
+    validations:
+      required: true
+  - type: textarea
+    id: known
+    attributes:
+      label: What we know
+      description: Logs, error rates, recent deploys, anything that points at root cause.
+  - type: textarea
+    id: status
+    attributes:
+      label: Current status
+      description: Mitigation in flight, rollback complete, investigating, etc. Update as you go.

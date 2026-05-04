@@ -1,0 +1,28 @@
+name: Feature request
+description: Something we should build
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: who
+    attributes:
+      label: Who's asking and why?
+      description: One line — whose problem this solves.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What we'd do
+      description: The shape of the change. Doesn't have to be final.
+    validations:
+      required: true
+  - type: textarea
+    id: not
+    attributes:
+      label: What we're explicitly NOT doing
+      description: Scope cut. Easier to ship something narrow than something perfect.
+  - type: textarea
+    id: signal
+    attributes:
+      label: How we know it worked
+      description: The metric or behavior change that says yes, this paid off.

@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Keep our reusable workflows pinned to a current set of action versions.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"

@@ -1,0 +1,68 @@
+name: uptime
+
+# Reusable lightweight uptime check. Hits a URL and opens an issue if
+# it's not 2xx. NOT a substitute for proper synthetic monitoring (Better
+# Stack / Checkly) — GitHub cron jitter is 5-15 min, so this catches
+# extended outages, not minute-scale availability.
+#
+# Call from a repo's workflow:
+#
+#   on:
+#     schedule:
+#       - cron: '*/15 * * * *'
+#     workflow_dispatch:
+#   jobs:
+#     uptime:
+#       uses: FrontendHorizon/.github/.github/workflows/uptime.yml@main
+#       with:
+#         url: https://onboarding.frontendhorizon.com/
+#       permissions:
+#         issues: write
+
+on:
+  workflow_call:
+    inputs:
+      url:
+        description: "URL to probe"
+        type: string
+        required: true
+      timeout-seconds:
+        description: "Curl timeout"
+        type: number
+        default: 30
+      expected-status:
+        description: "Expected HTTP status family"
+        type: string
+        default: "2xx"
+
+jobs:
+  probe:
+    name: probe
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Probe
+        id: probe
+        run: |
+          set +e
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time ${{ inputs.timeout-seconds }} "${{ inputs.url }}")
+          echo "status=$status" >> $GITHUB_OUTPUT
+          echo "url=${{ inputs.url }}" >> $GITHUB_OUTPUT
+          echo "Probed ${{ inputs.url }} → $status"
+
+      - name: Open issue when down
+        if: ${{ !startsWith(steps.probe.outputs.status, '2') }}
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "🚨 Uptime check failed: ${{ inputs.url }} returned ${{ steps.probe.outputs.status }}"
+          content: |
+            The scheduled uptime probe got a non-2xx response.
+
+            - URL: ${{ steps.probe.outputs.url }}
+            - HTTP status: ${{ steps.probe.outputs.status }}
+            - Time: ${{ github.event.repository.updated_at }}
+            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Investigate Coolify deploy state and Cloudflare DNS first.
+          labels: incident, uptime
