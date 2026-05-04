@@ -53,7 +53,7 @@ jobs:
 
       - name: Open issue when down
         if: ${{ !startsWith(steps.probe.outputs.status, '2') }}
-        uses: peter-evans/create-issue-from-file@v5
+        uses: peter-evans/create-issue-from-file@v6
         with:
           title: "🚨 Uptime check failed: ${{ inputs.url }} returned ${{ steps.probe.outputs.status }}"
           content: |
