@@ -64,7 +64,7 @@ jobs:
 
       - name: Open issue when audit finds vulnerabilities
         if: steps.audit.outputs.status != '0'
-        uses: peter-evans/create-issue-from-file@v5
+        uses: peter-evans/create-issue-from-file@v6
         with:
           title: "Nightly audit: ${{ inputs.severity }}+ vulnerabilities found"
           content-filepath: ${{ inputs.working-directory }}/audit.txt
