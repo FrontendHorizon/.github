@@ -44,7 +44,7 @@ jobs:
     name: audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Wait for deploy
         if: inputs.deploy-wait-seconds > 0 && github.event_name == 'push'
